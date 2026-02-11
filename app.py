@@ -1,0 +1,104 @@
+from flask import Flask, render_template, request
+import csv
+import os
+import smtplib
+from email.mime.text import MIMEText
+
+app = Flask(__name__)
+
+DONOR_FILE = "donors.csv"
+
+SENDER_EMAIL = "bloodbankofficialfinder@gmail.com"        
+SENDER_PASSWORD = "zijcdehhnkknlxzl"  
+
+# ---------------- HOME ----------------
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+
+# ---------------- REGISTER ----------------
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        name = request.form.get("name")
+        email = request.form.get("email")
+        phone = request.form.get("phone")
+        blood_group = request.form.get("blood_group")
+        city = request.form.get("city")
+
+        if not os.path.exists(DONOR_FILE):
+            with open(DONOR_FILE, "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["name", "email", "phone", "blood_group", "city"])
+
+        # Duplicate check
+        with open(DONOR_FILE, "r") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row["email"] == email or row["phone"] == phone:
+                    return "You already registered"
+
+        with open(DONOR_FILE, "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([name, email, phone, blood_group, city])
+
+        return "Registration successful"
+
+    return render_template("register.html")
+
+
+# ---------------- REQUEST BLOOD ----------------
+@app.route("/request", methods=["GET", "POST"])
+def request_blood():
+    donors = []
+
+    if request.method == "POST":
+        blood = request.form.get("blood_group")
+        city = request.form.get("city")
+
+        if os.path.exists(DONOR_FILE):
+            with open(DONOR_FILE, "r") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row["blood_group"].lower() == blood.lower() and row["city"].lower() == city.lower():
+                        donors.append(row)
+                        send_email(row["email"], blood, city)
+
+        return render_template("matched.html", donors=donors)
+
+    return render_template("request.html")
+
+
+# ---------------- EMAIL SENDER ----------------
+def send_email(to_email, blood, city):
+    body = f"""
+Hello,
+
+Urgent Blood Donation Request
+
+Blood Group: {blood}
+City: {city}
+
+Please help if available.
+
+Thank you,
+Blood Donation App
+"""
+
+    msg = MIMEText(body)
+    msg["Subject"] = "Urgent Blood Donation Request"
+    msg["From"] = SENDER_EMAIL
+    msg["To"] = to_email
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.send_message(msg)
+    except:
+        pass
+
+
+# ---------------- RUN APP ----------------
+if __name__ == "__main__":
+    app.run(host="0.0.0.0",port=5000)

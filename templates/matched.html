@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Matched Donors</title>
+</head>
+<body>
+
+<h2>Blood Group Required: {{ blood_group }}</h2>
+<h3>Hospital: {{ hospital }}</h3>
+
+{% if donors %}
+
+<h3 style="color:green;">✅ Matching Donors Found</h3>
+
+<table border="1" cellpadding="5">
+    <tr>
+        <th>Name</th>
+        <th>Blood Group</th>
+        <th>Phone</th>
+        <th>Email</th>
+        <th>City</th>
+        <th>Action</th>
+    </tr>
+
+    {% for donor in donors %}
+    <tr>
+        <td>{{ donor.name }}</td>
+        <td>{{ donor.blood_group }}</td>
+        <td>{{ donor.phone }}</td>
+        <td>{{ donor.email }}</td>
+        <td>{{ donor.city }}</td>
+
+        <td>
+            <form action="/send_email" method="POST">
+                <input type="hidden" name="email" value="{{ donor.email }}">
+                <input type="hidden" name="name" value="{{ donor.name }}">
+                <input type="hidden" name="hospital" value="{{ hospital }}">
+                <input type="hidden" name="blood_group" value="{{ blood_group }}">
+                <button type="submit">📧 Send Email</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+
+</table>
+
+{% else %}
+
+<h3 style="color:red;">❌ No matching blood available right now</h3>
+
+{% endif %}
+
+<br>
+<a href="/">⬅ Back to Home</a>
+
+</body>
+</html>
