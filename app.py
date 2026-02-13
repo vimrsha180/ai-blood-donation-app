@@ -57,18 +57,25 @@ def request_blood():
         blood = request.form.get("blood_group")
         city = request.form.get("city")
 
-        if os.path.exists(DONOR_FILE):
-            with open(DONOR_FILE, "r") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    if row["blood_group"].lower() == blood.lower() and row["city"].lower() == city.lower():
-                        donors.append(row)
-                        send_email(row["email"], blood, city)
+        if not os.path.exists(DONOR_FILE):
+            return "No donors registered yet"
+
+        with open(DONOR_FILE, "r") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if (
+                    row.get("blood_group", "").strip().lower() == blood.strip().lower()
+                    and row.get("city", "").strip().lower() == city.strip().lower()
+                ):
+                    donors.append(row)
+                    send_email(row["email"], blood, city)
+
+        if not donors:
+            return "No matching donors found"
 
         return render_template("matched.html", donors=donors)
 
     return render_template("request.html")
-
 
 # ---------------- EMAIL SENDER ----------------
 def send_email(to_email, blood, city):
