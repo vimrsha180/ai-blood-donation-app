@@ -49,33 +49,44 @@ def register():
 
 
 # ---------------- REQUEST BLOOD ----------------
+# ---------------- REQUEST BLOOD ----------------
 @app.route("/request", methods=["GET", "POST"])
 def request_blood():
     donors = []
 
     if request.method == "POST":
-        blood = request.form.get("blood_group")
-        city = request.form.get("city")
+        blood = request.form.get("blood_group", "").strip().lower()
+        city = request.form.get("city", "").strip().lower()
 
-        if not os.path.exists(DONOR_FILE):
-            return "No donors registered yet"
+        try:
+            if not os.path.exists(DONOR_FILE):
+                return "No donors registered yet"
 
-        with open(DONOR_FILE, "r") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                if (
-                    row.get("blood_group", "").strip().lower() == blood.strip().lower()
-                    and row.get("city", "").strip().lower() == city.strip().lower()
-                ):
-                    donors.append(row)
-                    send_email(row["email"], blood, city)
+            with open(DONOR_FILE, "r") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    donor_blood = row.get("blood_group", "").strip().lower()
+                    donor_city = row.get("city", "").strip().lower()
 
-        if not donors:
-            return "No matching donors found"
+                    if donor_blood == blood and donor_city == city:
+                        donors.append(row)
 
-        return render_template("matched.html", donors=donors)
+                        # SAFE EMAIL SEND
+                        try:
+                            send_email(row["email"], blood, city)
+                        except Exception as email_error:
+                            print("Email failed:", email_error)
+
+            if not donors:
+                return "No matching donors found"
+
+            return render_template("matched.html", donors=donors)
+
+        except Exception as e:
+            return f"Server Error: {str(e)}"
 
     return render_template("request.html")
+
 
 # ---------------- EMAIL SENDER ----------------
 def send_email(to_email, blood, city):
