@@ -46,9 +46,6 @@ def register():
         return "Registration successful"
 
     return render_template("register.html")
-
-
-# ---------------- REQUEST BLOOD ----------------
 # ---------------- REQUEST BLOOD ----------------
 @app.route("/request", methods=["GET", "POST"])
 def request_blood():
@@ -87,7 +84,6 @@ def request_blood():
 
     return render_template("request.html")
 
-
 # ---------------- EMAIL SENDER ----------------
 def send_email(to_email, blood, city):
     body = f"""
@@ -117,6 +113,6 @@ Blood Donation App
         pass
 
 
-# ---------------- RUN APP ----------------
-if __name__ == "__main__":
-    app.run(host="0.0.0.0",port=5000)
+# ---------------- RUN APP ------------
+    if __name__ == "__main__":
+    app.run()
