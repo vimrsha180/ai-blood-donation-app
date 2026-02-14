@@ -114,5 +114,6 @@ Blood Donation App
 
 
 # ---------------- RUN APP ------------
-    if __name__ == "__main__":
-    app.run()
+    # ---------------- RUN APP ----------------
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
