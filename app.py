@@ -3,15 +3,13 @@ import sqlite3
 import smtplib
 from email.mime.text import MIMEText
 
-
 app = Flask(__name__)
 
-DONOR_FILE = "donors.csv"
+SENDER_EMAIL = "bloodbankofficialfinder@gmail.com"
+SENDER_PASSWORD = "zijcdehhnkknlxzl"
 
-SENDER_EMAIL = "bloodbankofficialfinder@gmail.com"        
-SENDER_PASSWORD = "zijcdehhnkknlxzl" 
 
-# Create database
+# ---------------- DATABASE ----------------
 def init_db():
     conn = sqlite3.connect("donors.db")
     cursor = conn.cursor()
@@ -29,6 +27,8 @@ def init_db():
     conn.close()
 
 init_db()
+
+
 # ---------------- HOME ----------------
 @app.route("/")
 def index():
@@ -48,28 +48,22 @@ def register():
         if not all([name, email, phone, blood_group, city]):
             return "All fields are required"
 
-        # Create file if not exists
-        if not os.path.exists(DONOR_FILE):
-            with open(DONOR_FILE, "w", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerow(["name", "email", "phone", "blood_group", "city"])
+        conn = sqlite3.connect("donors.db")
+        cursor = conn.cursor()
 
-        # Duplicate check
-        with open(DONOR_FILE, "r") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                if row["email"] == email or row["phone"] == phone:
-                    return "You already registered"
+        # Check duplicate
+        cursor.execute("SELECT * FROM donors WHERE email=? OR phone=?", (email, phone))
+        existing = cursor.fetchone()
+        if existing:
+            conn.close()
+            return "You already registered"
 
-        with open(DONOR_FILE, "a", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow([
-                name.strip(),
-                email.strip(),
-                phone.strip(),
-                blood_group.strip(),
-                city.strip()
-            ])
+        cursor.execute(
+            "INSERT INTO donors (name, email, phone, blood_group, city) VALUES (?, ?, ?, ?, ?)",
+            (name.strip(), email.strip(), phone.strip(), blood_group.strip(), city.strip())
+        )
+        conn.commit()
+        conn.close()
 
         return "Registration successful"
 
@@ -79,8 +73,6 @@ def register():
 # ---------------- REQUEST BLOOD ----------------
 @app.route("/request", methods=["GET", "POST"])
 def request_blood():
-    donors = []
-
     if request.method == "POST":
 
         blood = request.form.get("blood_group")
@@ -89,35 +81,28 @@ def request_blood():
         if not blood or not city:
             return "Please select blood group and city"
 
-        blood = blood.strip().lower()
-        city = city.strip().lower()
+        conn = sqlite3.connect("donors.db")
+        cursor = conn.cursor()
 
-        if not os.path.exists(DONOR_FILE):
-            return "No donors registered yet"
+        cursor.execute(
+            "SELECT name, email, phone, blood_group, city FROM donors WHERE lower(blood_group)=? AND lower(city)=?",
+            (blood.strip().lower(), city.strip().lower())
+        )
 
-        try:
-            with open(DONOR_FILE, "r") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    donor_blood = row.get("blood_group", "").strip().lower()
-                    donor_city = row.get("city", "").strip().lower()
+        donors = cursor.fetchall()
+        conn.close()
 
-                    if donor_blood == blood and donor_city == city:
-                        donors.append(row)
+        if not donors:
+            return "No matching donors found"
 
-                        # Safe email send
-                        try:
-                            send_email(row["email"], blood, city)
-                        except Exception as e:
-                            print("Email error:", e)
+        # Send email safely
+        for donor in donors:
+            try:
+                send_email(donor[1], blood, city)
+            except Exception as e:
+                print("Email error:", e)
 
-            if not donors:
-                return "No matching donors found"
-
-            return render_template("matched.html", donors=donors)
-
-        except Exception as e:
-            return f"Server Error: {str(e)}"
+        return render_template("matched.html", donors=donors)
 
     return render_template("request.html")
 
