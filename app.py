@@ -9,7 +9,7 @@ app = Flask(__name__)
 DONOR_FILE = "donors.csv"
 
 SENDER_EMAIL = "bloodbankofficialfinder@gmail.com"        
-SENDER_PASSWORD = "zijcdehhnkknlxzl"  
+SENDER_PASSWORD = "zijcdehhnkknlxzl" 
 
 # ---------------- HOME ----------------
 @app.route("/")
@@ -27,6 +27,10 @@ def register():
         blood_group = request.form.get("blood_group")
         city = request.form.get("city")
 
+        if not all([name, email, phone, blood_group, city]):
+            return "All fields are required"
+
+        # Create file if not exists
         if not os.path.exists(DONOR_FILE):
             with open(DONOR_FILE, "w", newline="") as f:
                 writer = csv.writer(f)
@@ -41,24 +45,39 @@ def register():
 
         with open(DONOR_FILE, "a", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([name, email, phone, blood_group, city])
+            writer.writerow([
+                name.strip(),
+                email.strip(),
+                phone.strip(),
+                blood_group.strip(),
+                city.strip()
+            ])
 
         return "Registration successful"
 
     return render_template("register.html")
+
+
 # ---------------- REQUEST BLOOD ----------------
 @app.route("/request", methods=["GET", "POST"])
 def request_blood():
     donors = []
 
     if request.method == "POST":
-        blood = request.form.get("blood_group", "").strip().lower()
-        city = request.form.get("city", "").strip().lower()
+
+        blood = request.form.get("blood_group")
+        city = request.form.get("city")
+
+        if not blood or not city:
+            return "Please select blood group and city"
+
+        blood = blood.strip().lower()
+        city = city.strip().lower()
+
+        if not os.path.exists(DONOR_FILE):
+            return "No donors registered yet"
 
         try:
-            if not os.path.exists(DONOR_FILE):
-                return "No donors registered yet"
-
             with open(DONOR_FILE, "r") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
@@ -68,11 +87,11 @@ def request_blood():
                     if donor_blood == blood and donor_city == city:
                         donors.append(row)
 
-                        # SAFE EMAIL SEND
+                        # Safe email send
                         try:
                             send_email(row["email"], blood, city)
-                        except Exception as email_error:
-                            print("Email failed:", email_error)
+                        except Exception as e:
+                            print("Email error:", e)
 
             if not donors:
                 return "No matching donors found"
@@ -84,7 +103,8 @@ def request_blood():
 
     return render_template("request.html")
 
-# ---------------- EMAIL SENDER ----------------
+
+# ---------------- EMAIL ----------------
 def send_email(to_email, blood, city):
     body = f"""
 Hello,
@@ -105,15 +125,11 @@ Blood Donation App
     msg["From"] = SENDER_EMAIL
     msg["To"] = to_email
 
-    try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(SENDER_EMAIL, SENDER_PASSWORD)
-            server.send_message(msg)
-    except:
-        pass
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+        server.send_message(msg)
 
 
-# ---------------- RUN APP ------------
-    # ---------------- RUN APP ----------------
+# ---------------- RUN ----------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
