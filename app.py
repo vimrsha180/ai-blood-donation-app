@@ -1,8 +1,8 @@
 from flask import Flask, render_template, request
-import csv
-import os
+import sqlite3
 import smtplib
 from email.mime.text import MIMEText
+
 
 app = Flask(__name__)
 
