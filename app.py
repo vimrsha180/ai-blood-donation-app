@@ -11,6 +11,24 @@ DONOR_FILE = "donors.csv"
 SENDER_EMAIL = "bloodbankofficialfinder@gmail.com"        
 SENDER_PASSWORD = "zijcdehhnkknlxzl" 
 
+# Create database
+def init_db():
+    conn = sqlite3.connect("donors.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS donors (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            email TEXT,
+            phone TEXT,
+            blood_group TEXT,
+            city TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
 # ---------------- HOME ----------------
 @app.route("/")
 def index():
